@@ -3,7 +3,7 @@
 
 <div align="center">    
  
-# MNIST Pytorch Lightning
+# KERC 2020
 
 [![Paper](http://img.shields.io/badge/paper-arxiv.1001.2234-B31B1B.svg)](https://www.nature.com/articles/nature14539)
 [![Conference](http://img.shields.io/badge/NeurIPS-2019-4b44ce.svg)](https://papers.nips.cc/book/advances-in-neural-information-processing-systems-31-2018)
@@ -30,7 +30,7 @@ First, install dependencies
 
 ``` bash
 # clone project   
-git clone https://github.com/congvm-it/mnist.git
+git clone https://github.com/congvm-it/KERC2020.git
 
 # install project   
 cd mnist
@@ -40,40 +40,10 @@ pip install -r requirements.txt
  Next, navigate to any file and run it.   
  ```bash
 # module folder
-cd mnist
+cd KERC2020
 
 # run module (example: mnist as your main contribution)   
 python main.py    
-```
-
-## Imports
-
-This project is setup as a package which means you can now easily import any file into any other file like so:
-
-``` python
-  from datasets import MNISTDataModule
-  pl.seed_everything(1234)
-
-  parser = ArgumentParser()
-  parser = pl.Trainer.add_argparse_args(parser)
-  parser = MNISTDataModule.add_argparse_args(parser)
-  parser.add_argument('--num_workers', default=4, type=int)
-  args = parser.parse_args()
-
-  # Dataloader
-  data_loader = MNISTDataModule(num_workers=args.num_workers)
-
-  # Model
-  model = Classifier(**vars(args))
-
-  # Training
-  trainer = pl.Trainer(gpus=args.gpus, 
-                        max_epochs=2, 
-                        limit_train_batches=200)
-  trainer.fit(model, data_loader)
-
-  # Testing
-  trainer.test(model, test_dataloaders=data_loader.test_dataloader())
 ```
 
 ### Citation   
