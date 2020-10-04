@@ -9,16 +9,17 @@ import torch
 import pandas as pd
 import os
 from PIL import Image
+from typing import Sequence
 
 
 class KERCImageDataset(Dataset):
-    def __init__(self, data_dir, file_path, transforms=None):
+    def __init__(self, data_dir: str, file_path: str, transforms: transforms.Compose = None):
         self.data_dir = data_dir
         self.data_df = pd.read_csv(file_path, sep=",")
         self.transforms = transforms
 
     def __getitem__(self, idx):
-        # video_name,frame_files,face_files,valence,arousal,stress
+        # video_name, frame_files, face_files, valence, arousal, stress
         data = self.data_df.iloc[idx, :]
         face_file = data.face_files
         face_file = face_file[1::]
@@ -46,8 +47,8 @@ class KERCImageDataset(Dataset):
 class KERCVideoDataset(Dataset):
     def __init__(self, data_dir,
                  csv_path,
-                 sample_length=2,
-                 sampling_mode='last',
+                 video_length=0,
+                 padding_mode='left',
                  transforms=None,
                  verbose=1):
 
@@ -56,11 +57,11 @@ class KERCVideoDataset(Dataset):
         self.data_df = self._prepare_frames(data_df)
         self.verbose = verbose
         self.transforms = transforms
-        self.sampling_mode = sampling_mode
-        self.sample_length = sample_length
+        self.padding_mode = padding_mode
+        self.video_length = video_length
 
     def _prepare_frames(self, data_df):
-        # video_name,frame_files,face_files,valence,arousal,stress
+        # video_name, frame_files, face_files, valence, arousal, stress
         video_files = np.unique(data_df.video_name)
         print('Preparing video for KERC Video Dataset!')
         df = pd.DataFrame([], columns=['video_name', 'face_lists', 'valence', 'arousal', 'stress'])
@@ -74,15 +75,55 @@ class KERCVideoDataset(Dataset):
                          }
         return df
 
-    def _padding_video(self, list_arr, sampling_mode, sample_length):
+    def _padding_video(self,
+                       list_arr: Sequence[torch.Tensor],
+                       padding_mode: str,
+                       video_length: int):
         ''' Add more frames to a squence of image array corresponding to sample_length
             If the length of the list_arr is smaller than sampling_length, 
         '''
-        if sampling_mode == 'naive':
+        if padding_mode == 'naive':
             raise NotImplementedError
-        elif sampling_mode == 'last':
+
+        elif padding_mode == 'last':
             raise NotImplementedError
-        return list_arr
+
+        elif padding_mode == 'left':
+            try:
+                # Padding zeros at the begining of the video
+                padding_width = video_length - len(list_arr)
+
+                # Get size of the first frame
+                c, h, w = list_arr[0].shape
+                if padding_width > 0:
+                    for i in range(padding_width):
+                        pad = torch.zeros((c, h, w), dtype=torch.float32)
+                        list_arr.insert(0, pad)
+
+                elif padding_width < 0:
+                    sampled_list_arr = []
+                    # Sample `video_length` frames
+                    indexes = np.random.choice(range(0, len(list_arr)),
+                                               size=video_length,
+                                               replace=False)
+                    assert len(indexes) == video_length
+
+                    for i in indexes:
+                        sampled_list_arr.append(list_arr[i])
+                    list_arr = sampled_list_arr.copy()
+
+                assert len(list_arr) == video_length
+
+            except Exception as e:
+                import traceback
+                print(traceback.format_exc())
+                print('-' * 10)
+                print('padding_width: ', padding_width)
+                print('list_arr: ', len(list_arr))
+                print('=' * 50)
+            return list_arr
+        else:
+            raise NotImplementedError
 
     def __getitem__(self, idx):
         # video_name, frame_files, face_files, valence, arousal, stress
@@ -90,7 +131,6 @@ class KERCVideoDataset(Dataset):
         face_lists = data.face_lists
         list_img = []
         for img_path in face_lists:
-            # img_path = img_path[1::]
             img_path = os.path.join(self.data_dir, img_path)
             img_arr = cv2.imread(img_path)[..., ::-1]
 
@@ -99,11 +139,12 @@ class KERCVideoDataset(Dataset):
             list_img.append(img_arr)
 
         list_img = self._padding_video(list_img,
-                                       self.sampling_mode,
-                                       self.sample_length)
+                                       self.padding_mode,
+                                       self.video_length)
 
         if self.transforms:
             list_img = torch.stack(list_img)
+
         valence = torch.as_tensor([data.valence], dtype=torch.float32)
         arousal = torch.as_tensor([data.arousal], dtype=torch.float32)
         stress = torch.as_tensor([data.stress], dtype=torch.float32)
@@ -126,7 +167,8 @@ class KERCVideoLoader(pl.LightningDataModule):
                  val_dataset: Dataset = None,
                  test_dataset: Dataset = None,
                  batch_size: int = 32,
-                 num_workers=4, device='cpu'):
+                 num_workers=4,
+                 device='cpu'):
         super().__init__()
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset
