@@ -1,35 +1,15 @@
 
+
 import os
 import torch
 import numpy as np
-import pytorch_lightning as pl
-from modeling import EMORegressor
-from dataloader import EMODataModule
-from argparse import ArgumentParser
-
 import pprint
+
+import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
-
-
-def load_args():
-    parser = ArgumentParser()
-    parser = pl.Trainer.add_argparse_args(parser)
-    parser = pl.LightningDataModule.add_argparse_args(parser)
-    parser.add_argument('--data_dir', default='./', type=str)
-    parser.add_argument('--learning_rate', default=0.001, type=float)
-    parser.add_argument('--batch_size', default=32, type=int)
-    parser.add_argument('--num_workers', default=4, type=int)
-    parser.add_argument('--is_training', action='store_true')
-    parser.add_argument('--seed', default=2022, type=int)
-    parser.add_argument('--weight_path', default='', type=str)
-    parser.add_argument('--freeze_backbone', action='store_true')
-    parser.add_argument('--cuda_benchmark', action='store_true')
-    args = parser.parse_args()
-    print('-' * 100)
-    pprint.pprint(vars(args))
-    print('-' * 100)
-    return args
+from pytorch_lightning.loggers import TensorBoardLogger
+from helper import load_args, seed_everything
 
 
 def cli_main():
@@ -40,13 +20,29 @@ def cli_main():
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = args.cuda_benchmark
 
+    train_data = KERCVideoDataset(data_dir='/home/congvm/Dataset/',
+                                  csv_path='/home/congvm/Dataset/dataset/train_faces.csv',
+                                  video_length=68 // 3,
+                                  # 2, 68, 3, 96, 96
+                                  padding_mode='left',
+                                  transforms=train_aug(image_size=96),
+                                  n_skip=3)
+
+    val_data = KERCVideoDataset(data_dir='/home/congvm/Dataset/',
+                                csv_path='/home/congvm/Dataset/dataset/valid_faces.csv',
+                                video_length=68,
+                                padding_mode='left',
+                                transforms=val_aug(image_size=96),
+                                n_skip=3)
+
     # Dataloader
-    data_loader = EMODataModule(data_dir=args.data_dir,
-                                batch_size=args.batch_size,
-                                num_workers=args.num_workers)
+    data_loader = KERCVideoLoader(train_dataset=train_data,
+                                  val_dataset=val_data,
+                                  batch_size=8,
+                                  num_workers=4)
 
     # Model
-    model = EMORegressor(**vars(args))
+    model = get_VisionConvLSTM()
 
     if args.weight_path:
         print('Loading weights from {}'.format(args.weight_path))

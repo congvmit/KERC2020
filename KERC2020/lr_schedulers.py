@@ -13,14 +13,15 @@ class BoundingExponentialLR(_LRScheduler):
         last_epoch (int): The index of last epoch. Default: -1.
     """
 
-    def __init__(self, optimizer, gamma, min_lr=0.001, last_epoch=-1):
+    def __init__(self, optimizer, gamma, initial_lr=0.01, min_lr=0.001, last_epoch=-1):
         self.gamma = gamma
         self.min_lr = min_lr
-        super().__init__(optimizer, gamma)
+        self.initial_lr = initial_lr
+        super().__init__(optimizer, last_epoch)
 
     def _compute_lr(self, base_lr):
-        if base_lr <= self.min_lr:
-            return base_lr
+        if base_lr * self.gamma <= self.min_lr:
+            return self.min_lr
         else:
             return base_lr * self.gamma
 
