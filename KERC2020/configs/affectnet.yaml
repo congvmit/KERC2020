@@ -1,0 +1,19 @@
+model_name: resnet50_affectnet
+is_training: 1
+seed: 2020
+gpus: 1
+image_size: 256
+backbone: resnet50
+log_every_n_steps: 1
+learning_rate: 0.001
+dropout_rate: 0.5
+batch_size: 32
+num_workers: 8
+max_epochs: 20
+data_dir: /mnt/hdd3/AffectNet/Manually_Annotated_compressed/Manually_Annotated_Images
+train_csv: /mnt/hdd3/AffectNet/Manually_Annotated_compressed/training_clean_seven.csv
+val_csv: /mnt/hdd3/AffectNet/Manually_Annotated_compressed/valid_seven.csv
+ckpt_prefix: resnet50_affectnet
+tensorboard_dir: logs_affectnet
+weight_path: logs_affectnet/resnet50_affectnet/version_2/checkpoints/epoch=0.ckpt
+# freeze_backbone: True

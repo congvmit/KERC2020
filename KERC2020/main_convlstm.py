@@ -1,5 +1,3 @@
-
-
 import os
 import torch
 import numpy as np
@@ -9,40 +7,40 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
+
+from dataloader import KERCVideoDataset, KERCDataLoader
+from augmentation import video_train_aug, video_val_aug
 from helper import load_args, seed_everything
+
+from modeling import load_convlstm
 
 
 def cli_main():
     args = load_args()
-    np.random.seed(args.seed)
-    pl.seed_everything(args.seed)
-    torch.manual_seed(args.seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = args.cuda_benchmark
-
+    seed_everything(args)
     train_data = KERCVideoDataset(data_dir='/home/congvm/Dataset/',
                                   csv_path='/home/congvm/Dataset/dataset/train_faces.csv',
                                   video_length=68 // 3,
                                   # 2, 68, 3, 96, 96
                                   padding_mode='left',
-                                  transforms=train_aug(image_size=96),
+                                  transforms=video_train_aug(image_size=96),
                                   n_skip=3)
 
     val_data = KERCVideoDataset(data_dir='/home/congvm/Dataset/',
                                 csv_path='/home/congvm/Dataset/dataset/valid_faces.csv',
                                 video_length=68,
                                 padding_mode='left',
-                                transforms=val_aug(image_size=96),
+                                transforms=video_val_aug(image_size=96),
                                 n_skip=3)
 
     # Dataloader
-    data_loader = KERCVideoLoader(train_dataset=train_data,
-                                  val_dataset=val_data,
-                                  batch_size=8,
-                                  num_workers=4)
+    data_loader = KERCDataLoader(train_dataset=train_data,
+                                 val_dataset=val_data,
+                                 batch_size=8,
+                                 num_workers=4)
 
     # Model
-    model = get_VisionConvLSTM()
+    model = load_convlstm()
 
     if args.weight_path:
         print('Loading weights from {}'.format(args.weight_path))

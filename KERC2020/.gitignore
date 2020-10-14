@@ -2,6 +2,9 @@
 *.ckpt
 logs/
 lightning_logs/
+logs_kerc2019/
+resnet50_affectnet/
+weights/
 
 # Jupyter
 .ipynb_checkpoints

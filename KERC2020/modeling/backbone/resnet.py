@@ -225,9 +225,10 @@ class ResNet(nn.Module):
 def _resnet(arch, block, layers, pretrained, progress, include_top=True, **kwargs):
     model = ResNet(block, layers, include_top=include_top, **kwargs)
     if pretrained:
+        print('Load pretrained ImageNet weights!')
         state_dict = load_state_dict_from_url(model_urls[arch],
                                               progress=progress)
-        model.load_state_dict(state_dict)
+        print(model.load_state_dict(state_dict))
     return model
 
 

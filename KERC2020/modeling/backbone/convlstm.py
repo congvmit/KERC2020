@@ -50,6 +50,7 @@ class ConvLSTMCell(nn.Module):
                       kernel_size=self.kernel_size,
                       padding=self.padding,
                       bias=self.bias),
+
             nn.BatchNorm2d(8 * self.hidden_dim),
             nn.ReLU(),
             nn.AvgPool2d(2, 2),

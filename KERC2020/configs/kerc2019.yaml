@@ -1,0 +1,19 @@
+model_name: resnet50_kerc2019
+is_training: 1
+seed: 2020
+gpus: 1
+image_size: 256
+backbone: resnet50
+log_every_n_steps: 1
+learning_rate: 0.001
+dropout_rate: 0.5
+batch_size: 32
+num_workers: 8
+max_epochs: 20
+data_dir: /home/congvm/Dataset/
+train_csv: /home/congvm/Dataset/dataset/train_kerc2019.csv
+val_csv: /home/congvm/Dataset/dataset/val_kerc2019.csv
+ckpt_prefix: resnet50_kerc2019
+tensorboard_dir: logs_kerc2019
+# weight_path: logs_kerc2019/resnet50_kerc2019/version_25/checkpoints/epoch=10.ckpt
+# freeze_backbone: True

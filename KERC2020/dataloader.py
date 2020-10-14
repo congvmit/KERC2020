@@ -11,6 +11,105 @@ import pandas as pd
 import os
 from PIL import Image
 from typing import Sequence
+from augmentation import to_categorical
+
+
+class AffectNetDataset(Dataset):
+    def __init__(self, data_dir: str,
+                 csv_path: str,
+                 transforms: transforms.Compose = None, args=None):
+        self.data_dir = data_dir
+        self.data_df = pd.read_csv(csv_path)
+        self.transforms = transforms
+        self.args = args
+
+    def __getitem__(self, idx):
+        # 'subDirectory_filePath', 'face_x', 'face_y', 'face_width', 'face_height', 'facial_landmarks', 'expression', 'valence', 'arousal'
+        data = self.data_df.iloc[idx]
+
+        image_path = data.subDirectory_filePath
+        image_path = os.path.join(self.data_dir, image_path)
+
+        expression = data.expression
+        expression = torch.as_tensor(expression, dtype=torch.long)
+
+        img_arr = cv2.imread(image_path)[..., ::-1]
+
+        img_h, img_w, img_c = img_arr.shape
+
+        # Crop face
+        x = int(data.face_x)
+        y = int(data.face_y)
+        w = int(data.face_width)
+        h = int(data.face_height)
+
+        face_arr = img_arr[y:y + h, x:x + w, ...]
+
+        if self.transforms:
+            face_arr = self.transforms(image=face_arr)['image']
+
+        # Load valence, arousal
+        # -1 1
+        valence = torch.as_tensor([data.valence], dtype=torch.float32)
+        arousal = torch.as_tensor([data.arousal], dtype=torch.float32)
+
+        # Load landmarks
+        landmarks = np.array(list(map(float, data.facial_landmarks.split(';'))))
+        landmarks = landmarks.reshape((68, 2))
+        landmarks[:, 0] /= img_w
+        landmarks[:, 1] /= img_h
+        landmarks = torch.from_numpy(landmarks.flatten()).float()
+
+        return {
+            'image': face_arr,  # img should be a tensor
+            'expression': expression,
+            'valence': valence,
+            'arousal': arousal,
+            'landmarks': landmarks
+        }
+
+    def __len__(self):
+        return len(self.data_df)
+
+
+class KERC2019Dataset(Dataset):
+    def __init__(self, data_dir: str,
+                 csv_path: str,
+                 transforms: transforms.Compose = None):
+        self.convert_dict = {'Angry': 0,
+                             'Disgust': 1,
+                             'Fear': 2,
+                             'Happy': 3,
+                             'Neutral': 4,
+                             'Sad': 5,
+                             'Surprise': 6}
+        self.data_dir = data_dir
+        self.data_df = pd.read_csv(csv_path)
+        self.transforms = transforms
+
+    def __getitem__(self, idx):
+        # image_paths, labels
+        data = self.data_df.iloc[idx]
+
+        image_path = data.image_paths
+        image_path = os.path.join(self.data_dir, image_path)
+
+        label = data.labels
+
+        label = self.convert_dict[label]
+        label = torch.as_tensor(label, dtype=torch.long)
+
+        img_arr = cv2.imread(image_path)[..., ::-1]
+        if self.transforms:
+            img_arr = self.transforms(image=img_arr)['image']
+
+        return {
+            'image': img_arr,  # img should be a tensor
+            'label': label
+        }
+
+    def __len__(self):
+        return len(self.data_df)
 
 
 class KERCImageDataset(Dataset):
@@ -37,7 +136,6 @@ class KERCImageDataset(Dataset):
         stress = torch.as_tensor([stress], dtype=torch.float32)
 
         img_arr = cv2.imread(img_path)[..., ::-1]
-
         if self.transforms:
             img_arr = self.transforms(image=img_arr)['image']
 
